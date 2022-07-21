@@ -61,6 +61,7 @@ const buildPrecedentsMap = (graph: any, startNode: any, endNode: any) => {
 const getPathFromPrecedentsMap = (precedentsMap: any, endNode: any) => {
   const nodes = [];
   let n = endNode;
+  // @ts-ignore
   let precedent;
   while (n) {
     nodes.push(n);

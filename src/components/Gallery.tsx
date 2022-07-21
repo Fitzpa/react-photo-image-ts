@@ -1,5 +1,5 @@
-import React, { useState, useLayoutEffect, useRef } from 'react';
-import ResizeObserver from 'resize-observer-polyfill';
+import React, { useState, useLayoutEffect } from 'react';
+import { useResizeDetector } from 'react-resize-detector';
 import Photo from './Photo';
 import { css } from 'goober'
 import type { IPhoto } from "../types"
@@ -32,40 +32,53 @@ const Gallery = React.memo(function Gallery({
 }: IGallery) {
   const [containerWidth, setContainerWidth] = useState(0);
   const [galleryHeight, setGalleryHeight] = useState(0);
-  const galleryRef = useRef(null);
+
+
+
+  // const el: Element = document.createElement('div');
+  // const ref = useRef(el);
+
+  const { width, height, ref } = useResizeDetector();
+    console.log("🚀 ~ file: Gallery.tsx ~ line 42 ~ height", height)
 
   useLayoutEffect(() => {
     let animationFrameID: number | null = null;
-    const observer = new ResizeObserver(entries => {
+
       // only do something if width changes
-      const newWidth = entries[0].contentRect.width;
+      const newWidth = width;
       if (containerWidth !== newWidth) {
         // put in an animation frame to stop "benign errors" from
         // ResizObserver https://stackoverflow.com/questions/49384120/resizeobserver-loop-limit-exceeded
         if(animationFrameID !== null) {
           animationFrameID = window.requestAnimationFrame(() => {
-            setContainerWidth(Math.floor(newWidth));
+            if(newWidth) {
+              setContainerWidth(Math.floor(newWidth))
+            }
           });
         }
       }
-    });
+    // const observer = new ResizeObserver(entries => {
+    //   // only do something if width changes
+    //   const newWidth = entries[0].contentRect.width;
+    //   if (containerWidth !== newWidth) {
+    //     // put in an animation frame to stop "benign errors" from
+    //     // ResizObserver https://stackoverflow.com/questions/49384120/resizeobserver-loop-limit-exceeded
+    //     if(animationFrameID !== null) {
+    //       animationFrameID = window.requestAnimationFrame(() => {
+    //         setContainerWidth(Math.floor(newWidth));
+    //       });
+    //     }
+    //   }
+    // });
 
     if(animationFrameID === null) {
-      throw new Error('animationFrameID is null');
+      throw Error('animationFrameID is null');
     }
 
-    if(galleryRef.current === null) {
-      throw new Error('Gallery element is null');
-    }
-
-    observer.observe(galleryRef.current);
-    return () => {
-      observer.disconnect();
       if(animationFrameID !== null) {
         window.cancelAnimationFrame(animationFrameID);
       }
-    };
-  }, [galleryRef]);
+  }, [containerWidth]);
 
   const handleClick = (e: MouseEvent | TouchEvent | PointerEvent, { index }: { index: number}) => {
     return (    galleryOnClickHandler(e, {
@@ -77,9 +90,9 @@ const Gallery = React.memo(function Gallery({
   }
 
   // no containerWidth until after first render with refs, skip calculations and render nothing
-  if (!containerWidth) return <div ref={galleryRef}>&nbsp;</div>;
+  if (!containerWidth && ref !== null) return <div ref={ref}>&nbsp;</div>;
   // subtract 1 pixel because the browser may round up a pixel
-  const width = containerWidth - 1;
+  // width = containerWidth - 1;
   let thumbnails;
 
   if (direction === 'row') {
@@ -98,7 +111,7 @@ const Gallery = React.memo(function Gallery({
       }
     }
 
-    thumbnails = computeRowLayout({ containerWidth: width, limitNodeSearch, targetRowHeight, margin, photos });
+    thumbnails = computeRowLayout({ containerWidth: width || 0, limitNodeSearch, targetRowHeight, margin, photos });
   }
   if (direction === 'column') {
     // allow user to calculate columns from containerWidth
@@ -113,7 +126,7 @@ const Gallery = React.memo(function Gallery({
       if (containerWidth >= 1500) columns = 4;
     }
 
-    thumbnails = computeColumnLayout({ containerWidth: width, columns, margin, photos });
+    thumbnails = computeColumnLayout({ containerWidth: width || 0, columns, margin, photos });
     if(thumbnails === null) {
       throw new Error('thumbnails is null');
     }
@@ -138,7 +151,7 @@ const Gallery = React.memo(function Gallery({
 
   return (
     <div className="react-photo-gallery--gallery">
-      <div ref={galleryRef} data-containerheight={galleryHeight} className={cx(direction=== "column" ? DirectionColumn : DirectionRow)}>
+      <div ref={ref} data-containerheight={galleryHeight} className={cx(direction=== "column" ? DirectionColumn : DirectionRow)}>
         {thumbnails?.map((thumbnail, index) => {
           const { left, top, containerHeight, ...photo } = thumbnail;
           return (<Photo index={index} onClickHandler={handleClick} photo={photo} margin={margin} direction={direction} top={top} left={left}  />)
